@@ -35,9 +35,7 @@ export class EsriMapComponent implements OnInit, OnDestroy {
   // The <div> where we will place the map
   @ViewChild("mapViewNode", { static: true }) private mapViewEl: ElementRef;
 
-
-
-  // Dojo AMD dependencies
+  // register Dojo AMD dependencies
   _Map;
   _MapView;
   _FeatureLayer;
@@ -47,6 +45,7 @@ export class EsriMapComponent implements OnInit, OnDestroy {
   _RouteParameters;
   _FeatureSet;
   _Point;
+  _locator;
 
   // Instances
   map: esri.Map;
@@ -55,46 +54,14 @@ export class EsriMapComponent implements OnInit, OnDestroy {
   graphicsLayer: esri.GraphicsLayer;
 
   // Attributes
-  _zoom = 10;
-  _center: Array<number> = [0.1278, 51.5074];
-  _basemap = "streets";
-  _loaded = false;
+  zoom = 10;
+  center: Array<number> = [-118.73682450024377, 34.07817583063242];
+  basemap = "streets-vector";
+  loaded = false;
   pointCoords: number[] = [-118.73682450024377, 34.07817583063242];
   dir: number = 0;
   count: number = 0;
   timeoutHandler = null;
-
-
-  get mapLoaded(): boolean {
-    return this._loaded;
-  }
-
-  @Input()
-  set zoom(zoom: number) {
-    this._zoom = zoom;
-  }
-
-  get zoom(): number {
-    return this._zoom;
-  }
-
-  @Input()
-  set center(center: Array<number>) {
-    this._center = center;
-  }
-
-  get center(): Array<number> {
-    return this._center;
-  }
-
-  @Input()
-  set basemap(basemap: string) {
-    this._basemap = basemap;
-  }
-
-  get basemap(): string {
-    return this._basemap;
-  }
 
   constructor() { }
 
@@ -132,7 +99,7 @@ export class EsriMapComponent implements OnInit, OnDestroy {
 
       // Configure the Map
       const mapProperties = {
-        basemap: "streets-vector"
+        basemap: this.basemap
       };
 
       this.map = new Map(mapProperties);
@@ -143,8 +110,8 @@ export class EsriMapComponent implements OnInit, OnDestroy {
       // Initialize the MapView
       const mapViewProperties = {
         container: this.mapViewEl.nativeElement,
-        center: [-118.73682450024377, 34.07817583063242],
-        zoom: 10,
+        center: this.center,
+        zoom: this.zoom,
         map: this.map
       };
 
@@ -159,14 +126,14 @@ export class EsriMapComponent implements OnInit, OnDestroy {
 
       await this.view.when(); // wait for map to load
       console.log("ArcGIS map loaded");
-
       // this.addRouter();
-
+      console.log(this.view.center);
       return this.view;
     } catch (error) {
       console.log("EsriLoader: ", error);
     }
   }
+
 
   addFeatureLayers() {
     // Trailheads feature layer (points)
@@ -354,7 +321,7 @@ export class EsriMapComponent implements OnInit, OnDestroy {
     this.initializeMap().then(() => {
       // The map has been initialized
       console.log("mapView ready: ", this.view.ready);
-      this._loaded = this.view.ready;
+      this.loaded = this.view.ready;
       this.mapLoadedEvent.emit(true);
       this.runTimer();
     });
