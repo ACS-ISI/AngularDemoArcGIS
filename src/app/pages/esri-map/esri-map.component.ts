@@ -21,8 +21,25 @@ import {
   EventEmitter,
   OnDestroy
 } from "@angular/core";
-import { setDefaultOptions, loadModules } from 'esri-loader';
+
 import esri = __esri; // Esri TypeScript Types
+
+
+import Config from '@arcgis/core/config';
+import WebMap from '@arcgis/core/WebMap';
+import MapView from '@arcgis/core/views/MapView';
+import Bookmarks from '@arcgis/core/widgets/Bookmarks';
+import Expand from '@arcgis/core/widgets/Expand';
+
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import Graphic from '@arcgis/core/Graphic';
+import Point from '@arcgis/core/geometry/Point';
+
+import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
+
+import FeatureSet from '@arcgis/core/rest/support/FeatureSet';
+import RouteParameters from '@arcgis/core/rest/support/RouteParameters';
+import * as route from "@arcgis/core/rest/route.js";
 
 @Component({
   selector: "app-esri-map",
@@ -34,18 +51,6 @@ export class EsriMapComponent implements OnInit, OnDestroy {
 
   // The <div> where we will place the map
   @ViewChild("mapViewNode", { static: true }) private mapViewEl: ElementRef;
-
-  // register Dojo AMD dependencies
-  _Map;
-  _MapView;
-  _FeatureLayer;
-  _Graphic;
-  _GraphicsLayer;
-  _Route;
-  _RouteParameters;
-  _FeatureSet;
-  _Point;
-  _locator;
 
   // Instances
   map: esri.Map;
@@ -67,42 +72,15 @@ export class EsriMapComponent implements OnInit, OnDestroy {
 
   async initializeMap() {
     try {
-      // configure esri-loader to use version x from the ArcGIS CDN
-      // setDefaultOptions({ version: '3.3.0', css: true });
-      setDefaultOptions({ css: true });
-
-      // Load the modules for the ArcGIS API for JavaScript
-      const [esriConfig, Map, MapView, FeatureLayer, Graphic, Point, GraphicsLayer, route, RouteParameters, FeatureSet] = await loadModules([
-        "esri/config",
-        "esri/Map",
-        "esri/views/MapView",
-        "esri/layers/FeatureLayer",
-        "esri/Graphic",
-        "esri/geometry/Point",
-        "esri/layers/GraphicsLayer",
-        "esri/rest/route",
-        "esri/rest/support/RouteParameters",
-        "esri/rest/support/FeatureSet"
-      ]);
-
-      // esriConfig.apiKey = "MY_API_KEY";
-
-      this._Map = Map;
-      this._MapView = MapView;
-      this._FeatureLayer = FeatureLayer;
-      this._Graphic = Graphic;
-      this._GraphicsLayer = GraphicsLayer;
-      this._Route = route;
-      this._RouteParameters = RouteParameters;
-      this._FeatureSet = FeatureSet;
-      this._Point = Point;
 
       // Configure the Map
-      const mapProperties = {
+      const mapProperties: esri.WebMapProperties = {
         basemap: this.basemap
       };
 
-      this.map = new Map(mapProperties);
+      Config.apiKey = "MY_API_KEY";
+
+      this.map = new WebMap(mapProperties);
 
       this.addFeatureLayers();
       this.addPoint(this.pointCoords[1], this.pointCoords[0]);
@@ -137,16 +115,15 @@ export class EsriMapComponent implements OnInit, OnDestroy {
 
   addFeatureLayers() {
     // Trailheads feature layer (points)
-    var trailheadsLayer: __esri.FeatureLayer = new this._FeatureLayer({
+    var trailheadsLayer: esri.FeatureLayer = new FeatureLayer({
       url:
         "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0"
     });
 
     this.map.add(trailheadsLayer);
 
-
     // Trails feature layer (lines)
-    var trailsLayer: __esri.FeatureLayer = new this._FeatureLayer({
+    var trailsLayer: esri.FeatureLayer = new FeatureLayer({
       url:
         "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
     });
@@ -154,7 +131,7 @@ export class EsriMapComponent implements OnInit, OnDestroy {
     this.map.add(trailsLayer, 0);
 
     // Parks and open spaces (polygons)
-    var parksLayer: __esri.FeatureLayer = new this._FeatureLayer({
+    var parksLayer: esri.FeatureLayer = new FeatureLayer({
       url:
         "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space/FeatureServer/0"
     });
@@ -165,13 +142,14 @@ export class EsriMapComponent implements OnInit, OnDestroy {
   }
 
   addPoint(lat: number, lng: number) {
-    this.graphicsLayer = new this._GraphicsLayer();
+    this.graphicsLayer = new GraphicsLayer();
     this.map.add(this.graphicsLayer);
-    const point = { //Create a point
-      type: "point",
+
+    let point = new Point({
       longitude: lng,
       latitude: lat
-    };
+    });
+
     const simpleMarkerSymbol = {
       type: "simple-marker",
       color: [226, 119, 40],  // Orange
@@ -180,10 +158,12 @@ export class EsriMapComponent implements OnInit, OnDestroy {
         width: 1
       }
     };
-    this.pointGraphic = new this._Graphic({
+    
+    this.pointGraphic = new Graphic({
       geometry: point,
       symbol: simpleMarkerSymbol
     });
+
     this.graphicsLayer.add(this.pointGraphic);
   }
 
@@ -210,7 +190,7 @@ export class EsriMapComponent implements OnInit, OnDestroy {
     });
 
     var addGraphic = (type: any, point: any) => {
-      const graphic = new this._Graphic({
+      const graphic = new Graphic({
         symbol: {
           type: "simple-marker",
           color: (type === "origin") ? "white" : "black",
@@ -222,14 +202,14 @@ export class EsriMapComponent implements OnInit, OnDestroy {
     }
 
     var getRoute = () => {
-      const routeParams = new this._RouteParameters({
-        stops: new this._FeatureSet({
+      const routeParams = new RouteParameters({
+        stops: new FeatureSet({
           features: this.view.graphics.toArray()
         }),
         returnDirections: true
       });
 
-      this._Route.solve(routeUrl, routeParams).then((data: any) => {
+      route.solve(routeUrl, routeParams).then((data: any) => {
         for (let result of data.routeResults) {
           result.route.symbol = {
             type: "simple-line",
@@ -258,12 +238,9 @@ export class EsriMapComponent implements OnInit, OnDestroy {
 
           sum = sum * 1.609344;
           console.log('dist (km) = ', sum);
-
           this.view.ui.empty("top-right");
           this.view.ui.add(directions, "top-right");
-
         }
-
       }).catch((error: any) => {
         console.log(error);
       });
