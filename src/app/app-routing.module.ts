@@ -1,6 +1,6 @@
 import { ExtraOptions, RouterModule, Routes } from '@angular/router';
 import { NgModule } from '@angular/core';
-import { EsriMapComponent } from './pages/esri-map/esri-map.component';
+import { MapComponent } from './pages/map/map.component';
 import { HomeComponent } from './pages/home/home.component';
 
 
@@ -11,7 +11,7 @@ export const routes: Routes = [
   },
   {
     path: 'map',
-    component: EsriMapComponent,
+    component: MapComponent,
   },
   {
     path: '',

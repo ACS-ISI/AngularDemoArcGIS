@@ -2,7 +2,7 @@ import { BrowserModule } from "@angular/platform-browser";
 import { NgModule } from "@angular/core";
 
 import { AppComponent } from "./app.component";
-import { EsriMapComponent } from "./pages/esri-map/esri-map.component";
+import { MapComponent as MapComponent } from "./pages/map/map.component";
 import { AppRoutingModule } from "./app-routing.module";
 
 import { MatTabsModule } from '@angular/material/tabs';
@@ -11,9 +11,14 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
 
 import { FlexLayoutModule } from '@angular/flex-layout';
+import { HomeComponent } from "./pages/home/home.component";
 
 @NgModule({
-  declarations: [AppComponent, EsriMapComponent],
+  declarations: [
+    AppComponent,
+    HomeComponent,
+    MapComponent
+  ],
   imports: [
     BrowserModule,
     AppRoutingModule,
@@ -21,7 +26,8 @@ import { FlexLayoutModule } from '@angular/flex-layout';
     MatButtonModule,
     MatDividerModule,
     MatListModule,
-    FlexLayoutModule],
+    FlexLayoutModule
+  ],
   providers: [],
   bootstrap: [AppComponent]
 })

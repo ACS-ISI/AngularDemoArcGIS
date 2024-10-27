@@ -27,11 +27,11 @@ import RouteParameters from '@arcgis/core/rest/support/RouteParameters';
 import * as route from "@arcgis/core/rest/route.js";
 
 @Component({
-  selector: "app-esri-map",
-  templateUrl: "./esri-map.component.html",
-  styleUrls: ["./esri-map.component.scss"]
+  selector: "app-map",
+  templateUrl: "./map.component.html",
+  styleUrls: ["./map.component.scss"]
 })
-export class EsriMapComponent implements OnInit, OnDestroy {
+export class MapComponent implements OnInit, OnDestroy {
   @Output() mapLoadedEvent = new EventEmitter<boolean>();
 
   @ViewChild("mapViewNode", { static: true }) private mapViewEl: ElementRef;
@@ -60,7 +60,7 @@ export class EsriMapComponent implements OnInit, OnDestroy {
 
   async initializeMap() {
     try {
-      Config.apiKey = "MY_API_KEY";
+      Config.apiKey = "YOUR_API_KEY";
 
       const mapProperties: esri.WebMapProperties = {
         basemap: this.basemap
