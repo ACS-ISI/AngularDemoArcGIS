@@ -1,6 +1,6 @@
 <nav mat-tab-nav-bar [tabPanel]="tabPanel">
-  <a mat-tab-link *ngFor="let tab of tabs" (click)="activeTab = tab.link" [active]="activeTab == tab.link"
-    [routerLink]="tab.link">{{tab.name}}</a>
+  <a mat-tab-link *ngFor="let tab of tabs" [routerLink]="tab.link" routerLinkActive #rla="routerLinkActive"
+    [active]="rla.isActive">{{ tab.name }}</a>
 </nav>
 <mat-tab-nav-panel #tabPanel></mat-tab-nav-panel>
 

@@ -1,7 +1,12 @@
-<!-- Main container to hold the map and sidebar -->
+<!-- Main container to hold the map -->
 <div class="container">
-    <!-- The DIV that will contain the map -->
-    <div #mapViewNode class="map-view"></div>
+    <arcgis-map class="map-view" [map]="map" [center]="center" [zoom]="zoom"
+        (arcgisViewReadyChange)="onViewReady($event)" (arcgisViewClick)="onViewClick($event)">
+        <ol *ngIf="directions().length > 0" slot="top-right"
+            class="esri-widget esri-widget--panel esri-directions__scroller directions">
+            <li *ngFor="let direction of directions()">{{ direction.text }} ({{ direction.length }} miles)</li>
+        </ol>
+    </arcgis-map>
 </div>
 
 <!-- Floating Action Button (FAB) -->

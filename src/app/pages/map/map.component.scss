@@ -1,21 +1,20 @@
-/* import the required JSAPI css */
-// @import url('https://js.arcgis.com/4.12/esri/css/main.css');
-
-// .esri-view {
-//   height: 500px;
-// }
-
-/* Container to hold both the sidebar and the map */
+/* Container to hold the map */
 .container {
   display: flex;
-  height: calc(100vh - 64px);
+  height: calc(100vh - 48px);
   width: 100%;
 }
 
 /* Map view styling */
 .map-view {
-  flex: 1; /* Takes up the remaining space next to the sidebar */
+  flex: 1;
   height: 100%;
+}
+
+/* Turn-by-turn directions panel */
+.directions {
+  margin-top: 0;
+  padding: 15px 15px 15px 30px;
 }
 
 /* Floating Action Button (FAB) styling */

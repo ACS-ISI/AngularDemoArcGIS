@@ -1,167 +1,130 @@
-import {
-  Component,
-  OnInit,
-  ViewChild,
-  ElementRef,
-  Output,
-  EventEmitter,
-  OnDestroy
-} from "@angular/core";
+import { Component, CUSTOM_ELEMENTS_SCHEMA, output, signal } from "@angular/core";
+import { NgFor, NgIf } from "@angular/common";
 
-import esri = __esri; // Esri TypeScript Types
+import "@arcgis/map-components/components/arcgis-map";
+import type { ArcgisMap } from "@arcgis/map-components/components/arcgis-map";
 
-import Config from '@arcgis/core/config';
-import WebMap from '@arcgis/core/WebMap';
-import MapView from '@arcgis/core/views/MapView';
-import Bookmarks from '@arcgis/core/widgets/Bookmarks';
-import Expand from '@arcgis/core/widgets/Expand';
-
+import esriConfig from "@arcgis/core/config";
+import EsriMap from "@arcgis/core/Map";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import Graphic from '@arcgis/core/Graphic';
-import Point from '@arcgis/core/geometry/Point';
+import Graphic from "@arcgis/core/Graphic";
+import Point from "@arcgis/core/geometry/Point";
+import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
+import FeatureSet from "@arcgis/core/rest/support/FeatureSet";
+import RouteParameters from "@arcgis/core/rest/support/RouteParameters";
+import type RouteSolveResult from "@arcgis/core/rest/support/RouteSolveResult";
+import * as route from "@arcgis/core/rest/route";
 
-import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
+// Routing (route-api.arcgis.com) requires an ArcGIS API key. Leave this commented out
+// until you have a real key: an invalid key makes every ArcGIS Online request fail,
+// including the public feature layers and basemap.
+// esriConfig.apiKey = "YOUR_API_KEY";
 
-import FeatureSet from '@arcgis/core/rest/support/FeatureSet';
-import RouteParameters from '@arcgis/core/rest/support/RouteParameters';
-import * as route from "@arcgis/core/rest/route.js";
+const routeUrl = "https://route-api.arcgis.com/arcgis/rest/services/World/Route/NAServer/Route_World";
+
+interface IDirection {
+  text: string;
+  length: number;
+}
 
 @Component({
   selector: "app-map",
   templateUrl: "./map.component.html",
-  styleUrls: ["./map.component.scss"]
+  imports: [NgIf, NgFor],
+  styleUrl: "./map.component.scss",
+  schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
-export class MapComponent implements OnInit, OnDestroy {
-  @Output() mapLoadedEvent = new EventEmitter<boolean>();
+export class MapComponent {
+  readonly mapLoadedEvent = output<boolean>();
 
-  @ViewChild("mapViewNode", { static: true }) private mapViewEl: ElementRef;
+  readonly zoom = 10;
+  readonly center = [-118.73682450024377, 34.07817583063242];
+  readonly basemap = "streets-vector";
 
-  map: esri.Map;
-  view: esri.MapView;
-  graphicsLayer: esri.GraphicsLayer;
-  graphicsLayerUserPoints: esri.GraphicsLayer;
-  graphicsLayerRoutes: esri.GraphicsLayer;
-  trailheadsLayer: esri.FeatureLayer;
+  readonly trailheadsLayer = new FeatureLayer({
+    url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0",
+    outFields: ['*']
+  });
+  readonly graphicsLayerUserPoints = new GraphicsLayer({ title: "points" });
+  readonly graphicsLayerRoutes = new GraphicsLayer({ title: "routes" });
 
-  zoom = 10;
-  center: Array<number> = [-118.73682450024377, 34.07817583063242];
-  basemap = "streets-vector";
-  loaded = false;
-  directionsElement: any;
+  readonly map = new EsriMap({ basemap: this.basemap });
 
-  constructor() { }
+  readonly directions = signal<IDirection[]>([]);
 
-  ngOnInit() {
-    this.initializeMap().then(() => {
-      this.loaded = this.view.ready;
-      this.mapLoadedEvent.emit(true);
-    });
-  }
+  private mapElement?: ArcgisMap;
 
-  async initializeMap() {
-    try {
-      Config.apiKey = "YOUR_API_KEY";
-
-      const mapProperties: esri.WebMapProperties = {
-        basemap: this.basemap
-      };
-      this.map = new WebMap(mapProperties);
-
-      this.addFeatureLayers();
-      this.addGraphicsLayer();
-
-      const mapViewProperties = {
-        container: this.mapViewEl.nativeElement,
-        center: this.center,
-        zoom: this.zoom,
-        map: this.map
-      };
-      this.view = new MapView(mapViewProperties);
-
-      this.view.on('pointer-move', ["Shift"], (event) => {
-        const point = this.view.toMap({ x: event.x, y: event.y });
-        console.log("Map pointer moved: ", point.longitude, point.latitude);
-      });
-
-      await this.view.when();
-      console.log("ArcGIS map loaded");
-      this.addRouting();
-      return this.view;
-    } catch (error) {
-      console.error("Error loading the map: ", error);
-      alert("Error loading the map");
-    }
+  constructor() {
+    this.addFeatureLayers();
+    this.addGraphicsLayers();
   }
 
   addFeatureLayers() {
-    this.trailheadsLayer = new FeatureLayer({
-      url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0",
-      outFields: ['*']
-    });
-    this.map.add(this.trailheadsLayer);
-
     const trailsLayer = new FeatureLayer({
       url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
     });
-    this.map.add(trailsLayer, 0);
-
     const parksLayer = new FeatureLayer({
       url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space/FeatureServer/0"
     });
-    this.map.add(parksLayer, 0);
-
+    this.map.addMany([parksLayer, trailsLayer, this.trailheadsLayer]);
     console.log("Feature layers added");
   }
 
-  addGraphicsLayer() {
-    this.graphicsLayer = new GraphicsLayer();
-    this.map.add(this.graphicsLayer);
-    this.graphicsLayerUserPoints = new GraphicsLayer();
-    this.map.add(this.graphicsLayerUserPoints);
-    this.graphicsLayerRoutes = new GraphicsLayer();
-    this.map.add(this.graphicsLayerRoutes);
+  addGraphicsLayers() {
+    this.map.addMany([this.graphicsLayerUserPoints, this.graphicsLayerRoutes]);
   }
 
-  addRouting() {
-    const routeUrl = "https://route-api.arcgis.com/arcgis/rest/services/World/Route/NAServer/Route_World";
-    this.view.on("click", (event) => {
-      this.view.hitTest(event).then((elem: esri.HitTestResult) => {
-        if (elem && elem.results && elem.results.length > 0) {
-          let point: esri.Point = elem.results.find(e => e.layer === this.trailheadsLayer)?.mapPoint;
-          if (point) {
-            console.log("get selected point: ", elem, point);
-            if (this.graphicsLayerUserPoints.graphics.length === 0) {
-              this.addPoint(point.latitude, point.longitude);
-            } else if (this.graphicsLayerUserPoints.graphics.length === 1) {
-              this.addPoint(point.latitude, point.longitude);
-              this.calculateRoute(routeUrl);
-            } else {
-              this.removePoints();
-            }
-          }
+  onViewReady(event: Event) {
+    this.mapElement = event.target as ArcgisMap;
+    const view = this.mapElement.view;
+
+    view.on("pointer-move", ["Shift"], (pointerEvent) => {
+      const point = view.toMap({ x: pointerEvent.x, y: pointerEvent.y });
+      console.log("Map pointer moved: ", point?.longitude, point?.latitude);
+    });
+
+    console.log("ArcGIS map loaded");
+    this.mapLoadedEvent.emit(true);
+  }
+
+  async onViewClick(event: Event) {
+    if (!this.mapElement) {
+      return;
+    }
+    const { detail } = event as ArcgisMap["arcgisViewClick"];
+    const response = await this.mapElement.hitTest(detail, { include: this.trailheadsLayer });
+    const result = response.results.find((r) => r.type === "graphic");
+    const point = result?.mapPoint;
+    if (!point) {
+      return;
+    }
+
+    console.log("get selected point: ", response, point);
+    const pointCount = this.graphicsLayerUserPoints.graphics.length;
+    if (pointCount === 0) {
+      this.addPoint(point.latitude, point.longitude);
+    } else if (pointCount === 1) {
+      this.addPoint(point.latitude, point.longitude);
+      this.calculateRoute();
+    } else {
+      this.removePoints();
+    }
+  }
+
+  addPoint(lat: number | null | undefined, lng: number | null | undefined) {
+    const pointGraphic = new Graphic({
+      geometry: new Point({
+        longitude: lng ?? undefined,
+        latitude: lat ?? undefined
+      }),
+      symbol: {
+        type: "simple-marker",
+        color: [226, 119, 40],  // Orange
+        outline: {
+          color: [255, 255, 255], // White
+          width: 1
         }
-      });
-    });
-  }
-
-  addPoint(lat: number, lng: number) {
-    let point = new Point({
-      longitude: lng,
-      latitude: lat
-    });
-
-    const simpleMarkerSymbol = {
-      type: "simple-marker",
-      color: [226, 119, 40],  // Orange
-      outline: {
-        color: [255, 255, 255], // White
-        width: 1
       }
-    };
-
-    let pointGraphic: esri.Graphic = new Graphic({
-      geometry: point,
-      symbol: simpleMarkerSymbol
     });
 
     this.graphicsLayerUserPoints.add(pointGraphic);
@@ -175,7 +138,7 @@ export class MapComponent implements OnInit, OnDestroy {
     this.graphicsLayerRoutes.removeAll();
   }
 
-  async calculateRoute(routeUrl: string) {
+  async calculateRoute() {
     const routeParams = new RouteParameters({
       stops: new FeatureSet({
         features: this.graphicsLayerUserPoints.graphics.toArray()
@@ -192,53 +155,30 @@ export class MapComponent implements OnInit, OnDestroy {
     }
   }
 
-  displayRoute(data: any) {
+  displayRoute(data: RouteSolveResult) {
     for (const result of data.routeResults) {
-      result.route.symbol = {
-        type: "simple-line",
-        color: [5, 150, 255],
-        width: 3
-      };
-      this.graphicsLayerRoutes.graphics.add(result.route);
+      if (result.route) {
+        result.route.symbol = {
+          type: "simple-line",
+          color: [5, 150, 255],
+          width: 3
+        } as any;
+        this.graphicsLayerRoutes.add(result.route);
+      }
     }
-    if (data.routeResults.length > 0) {
-      this.showDirections(data.routeResults[0].directions.features);
+    const features = data.routeResults[0]?.directions?.features;
+    if (features?.length) {
+      this.directions.set(features.map((f) => ({ text: f.attributes.text, length: f.attributes.length })));
     } else {
       alert("No directions found");
     }
   }
 
   clearRouter() {
-    if (this.view) {
-      // Remove all graphics related to routes
-      this.removeRoutes();
-      this.removePoints();
-      console.log("Route cleared");
-      this.view.ui.remove(this.directionsElement);
-      this.view.ui.empty("top-right");
-      console.log("Directions cleared");
-    }
-  }
-
-  showDirections(features: any[]) {
-    this.directionsElement = document.createElement("ol");
-    this.directionsElement.classList.add("esri-widget", "esri-widget--panel", "esri-directions__scroller");
-    this.directionsElement.style.marginTop = "0";
-    this.directionsElement.style.padding = "15px 15px 15px 30px";
-
-    features.forEach((result, i) => {
-      const direction = document.createElement("li");
-      direction.innerHTML = `${result.attributes.text} (${result.attributes.length} miles)`;
-      this.directionsElement.appendChild(direction);
-    });
-
-    this.view.ui.empty("top-right");
-    this.view.ui.add(this.directionsElement, "top-right");
-  }
-
-  ngOnDestroy() {
-    if (this.view) {
-      this.view.container = null;
-    }
+    // Remove all graphics related to routes
+    this.removeRoutes();
+    this.removePoints();
+    this.directions.set([]);
+    console.log("Route cleared");
   }
 }

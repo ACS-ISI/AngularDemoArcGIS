@@ -1,5 +1,7 @@
 import { Component } from '@angular/core';
-import { NavigationEnd, Event, Router } from '@angular/router';
+import { NgFor } from '@angular/common';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { MatTabsModule } from '@angular/material/tabs';
 
 interface ITab {
   name: string;
@@ -8,34 +10,17 @@ interface ITab {
 
 @Component({
   selector: 'app-root',
+  imports: [NgFor, RouterOutlet, RouterLink, RouterLinkActive, MatTabsModule],
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrl: './app.component.scss'
 })
-
 export class AppComponent {
 
-  tabs: ITab[] = [{
+  readonly tabs: ITab[] = [{
     name: 'Home',
     link: '/home'
   }, {
     name: 'Map',
     link: '/map'
   }];
-
-  activeTab = this.tabs[0].link;
-
-  constructor(private router: Router) {
-    this.router.events.subscribe((event: Event) => {
-      if (event instanceof NavigationEnd) {
-        this.activeTab = event.url;
-        console.log(event);
-      }
-    });
-  }
-
-  // See app.component.html
-  mapLoadedEvent(status: boolean) {
-    console.log('The map loaded: ' + status);
-  }
 }
-

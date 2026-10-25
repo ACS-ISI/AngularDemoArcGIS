@@ -1,6 +1,21 @@
 # angular-cli-esri-map
 Based on angular-cli-esri-map
 
+Angular 21 + ArcGIS Maps SDK for JavaScript 5.1 (`@arcgis/core` and `@arcgis/map-components`).
+
+## Getting started
+
+Requires Node.js ^20.19, ^22.12 or >=24.
+
+```
+npm install
+npm start      # dev server at http://localhost:4200
+npm run build
+npm test
+```
+
+Routing between trailheads needs an ArcGIS API key: set `esriConfig.apiKey` in `src/app/pages/map/map.component.ts`.
+
 ## Licensing
 
 Copyright 2020 Esri
